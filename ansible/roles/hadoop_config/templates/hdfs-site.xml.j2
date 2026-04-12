@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<configuration>
+  <property>
+    <name>dfs.replication</name>
+    <value>{{ hdfs_replication_factor }}</value>
+  </property>
+  <property>
+    <name>dfs.namenode.name.dir</name>
+    <value>file://{{ hdfs_name_dir }}</value>
+  </property>
+  <property>
+    <name>dfs.datanode.data.dir</name>
+    <value>file://{{ hdfs_data_dir }}</value>
+  </property>
+  <property>
+    <name>dfs.blocksize</name>
+    <value>134217728</value>
+    <description>128 MB HDFS block size</description>
+  </property>
+  <property>
+    <name>dfs.namenode.http-address</name>
+    <value>0.0.0.0:9870</value>
+  </property>
+  <property>
+    <name>dfs.permissions.enabled</name>
+    <value>false</value>
+    <description>Disabled for lab simplicity</description>
+  </property>
+</configuration>

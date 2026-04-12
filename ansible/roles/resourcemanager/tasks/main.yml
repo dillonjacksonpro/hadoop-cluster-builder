@@ -1,0 +1,36 @@
+- name: Check if ResourceManager is already running
+  shell: pgrep -f "org.apache.hadoop.yarn.server.resourcemanager.ResourceManager"
+  register: rm_proc
+  changed_when: false
+  failed_when: false
+
+- name: Start YARN (ResourceManager and NodeManagers)
+  shell: "{{ hadoop_home }}/sbin/start-yarn.sh"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+    PDSH_RCMD_TYPE: ssh
+  when: rm_proc.rc != 0
+
+- name: Wait for YARN ResourceManager web UI to be available
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: 8088
+    timeout: 60
+
+- name: Check if MapReduce JobHistory Server is already running
+  shell: pgrep -f "org.apache.hadoop.mapred.JobHistoryServer"
+  register: jhs_proc
+  changed_when: false
+  failed_when: false
+
+- name: Start MapReduce JobHistory Server
+  shell: "{{ hadoop_home }}/sbin/mr-jobhistory-daemon.sh start historyserver"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+  when: jhs_proc.rc != 0

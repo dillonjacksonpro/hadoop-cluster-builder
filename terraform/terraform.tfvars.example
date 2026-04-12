@@ -1,0 +1,12 @@
+# Copy this file to terraform.tfvars and adjust values as needed.
+# terraform.tfvars is gitignored — never commit credentials.
+
+aws_region    = "us-east-1"
+cluster_name  = "hadoop-lab"
+cluster_size  = 3     # 1 = single node (NameNode+DataNode combined); N = 1 NameNode + (N-1) DataNodes
+instance_type = "t3.medium"   # DataNode instance type
+namenode_type = "t3.large"    # NameNode instance type (also used for single-node)
+
+# Restrict SSH and web UI access to your IP/CIDR(s).
+# Default in variables.tf is ["0.0.0.0/0"] for quick lab usage.
+admin_cidr_blocks = ["203.0.113.10/32"]

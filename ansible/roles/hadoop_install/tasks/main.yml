@@ -1,0 +1,51 @@
+---
+- name: Check if Hadoop is already installed
+  stat:
+    path: "{{ hadoop_home }}"
+  register: hadoop_dir
+
+- name: Download Hadoop tarball
+  get_url:
+    url: "{{ hadoop_download_url }}"
+    dest: "/tmp/hadoop-{{ hadoop_version }}.tar.gz"
+    checksum: "{{ hadoop_checksum }}"
+    timeout: 300
+  retries: 3
+  delay: 10
+  when: not hadoop_dir.stat.exists
+
+- name: Extract Hadoop tarball
+  unarchive:
+    src: "/tmp/hadoop-{{ hadoop_version }}.tar.gz"
+    dest: "{{ hadoop_install_dir }}"
+    remote_src: true
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+  when: not hadoop_dir.stat.exists
+
+- name: Create Hadoop symlink
+  file:
+    src: "{{ hadoop_home }}"
+    dest: "{{ hadoop_symlink }}"
+    state: link
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+
+- name: Set ownership of Hadoop install directory
+  file:
+    path: "{{ hadoop_install_dir }}"
+    state: directory
+    recurse: true
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+
+- name: Remove downloaded tarball
+  file:
+    path: "/tmp/hadoop-{{ hadoop_version }}.tar.gz"
+    state: absent
+
+- name: Install Hadoop environment profile script
+  template:
+    src: hadoop.sh.j2
+    dest: /etc/profile.d/hadoop.sh
+    mode: "0644"

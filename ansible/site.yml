@@ -1,0 +1,44 @@
+---
+# Master playbook — provisions and starts a Hadoop cluster.
+# Roles are applied in order; each play depends on the previous completing.
+
+- name: Wait for all nodes to be reachable via SSH
+  hosts: hadoop_cluster
+  gather_facts: false
+  tasks:
+    - name: Wait for SSH connection
+      wait_for_connection:
+        timeout: 300
+        sleep: 10
+
+- name: Common setup on all nodes
+  hosts: hadoop_cluster
+  become: true
+  roles:
+    - common
+    - hadoop_install
+
+- name: Distribute inter-node SSH keys (from NameNode)
+  hosts: namenode
+  become: true
+  roles:
+    - ssh_keys
+
+- name: Configure Hadoop on all nodes
+  hosts: hadoop_cluster
+  become: true
+  roles:
+    - hadoop_config
+
+- name: Format HDFS and start DFS + YARN (NameNode)
+  hosts: namenode
+  become: true
+  roles:
+    - namenode
+    - resourcemanager
+
+- name: Verify DataNode and NodeManager services
+  hosts: datanode
+  become: true
+  roles:
+    - datanode

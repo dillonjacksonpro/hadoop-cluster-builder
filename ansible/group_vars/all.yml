@@ -1,0 +1,27 @@
+---
+# Hadoop version and download
+hadoop_version: "3.3.6"
+hadoop_download_url: "https://downloads.apache.org/hadoop/common/hadoop-{{ hadoop_version }}/hadoop-{{ hadoop_version }}.tar.gz"
+hadoop_checksum: "sha512:https://downloads.apache.org/hadoop/common/hadoop-{{ hadoop_version }}/hadoop-{{ hadoop_version }}.tar.gz.sha512"
+
+# Install paths
+hadoop_install_dir: "/opt/hadoop"
+hadoop_home: "{{ hadoop_install_dir }}/hadoop-{{ hadoop_version }}"
+hadoop_symlink: "{{ hadoop_install_dir }}/current"
+
+# System user
+hadoop_user: "hadoop"
+hadoop_group: "hadoop"
+
+# Java
+java_package: "java-11-amazon-corretto-headless"
+java_home: "/usr/lib/jvm/java-11-amazon-corretto"
+
+# HDFS directories
+hdfs_data_dir: "/data/hdfs"
+hdfs_name_dir: "/data/namenode"
+
+# Resource settings (tuned for t3.medium / t3.large)
+yarn_memory_mb: 3072
+yarn_vcores: 2
+mapred_memory_mb: 1536

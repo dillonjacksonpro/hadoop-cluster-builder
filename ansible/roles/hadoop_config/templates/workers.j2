@@ -1,0 +1,7 @@
+{% if groups['datanode'] | length == 0 or (groups['datanode'] | length == 1 and groups['datanode'][0] == groups['namenode'][0]) %}
+localhost
+{% else %}
+{% for host in groups['datanode'] | unique %}
+{{ hostvars[host]['ansible_default_ipv4']['address'] }}
+{% endfor %}
+{% endif %}

@@ -1,0 +1,5 @@
+---
+# NameNode-specific overrides
+# The NameNode has more RAM (t3.large), allow it to use more for YARN AM
+yarn_memory_mb: 6144
+yarn_vcores: 2

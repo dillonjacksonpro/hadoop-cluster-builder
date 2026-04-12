@@ -1,0 +1,20 @@
+---
+- name: Verify DataNode JVM process is running
+  shell: pgrep -f DataNode
+  register: datanode_proc
+  changed_when: false
+  retries: 6
+  delay: 10
+  until: datanode_proc.rc == 0
+
+- name: Verify NodeManager JVM process is running
+  shell: pgrep -f NodeManager
+  register: nodemanager_proc
+  changed_when: false
+  retries: 6
+  delay: 10
+  until: nodemanager_proc.rc == 0
+
+- name: Report DataNode status
+  debug:
+    msg: "DataNode and NodeManager are running on {{ inventory_hostname }} ({{ ansible_default_ipv4.address }})"

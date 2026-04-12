@@ -1,0 +1,4 @@
+---
+# DataNode-specific overrides (t3.medium: 2 vCPU, 4GB RAM)
+yarn_memory_mb: 3072
+yarn_vcores: 2

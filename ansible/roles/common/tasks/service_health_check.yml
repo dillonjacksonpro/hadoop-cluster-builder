@@ -1,0 +1,50 @@
+---
+# Ansible reusable task for checking and verifying Hadoop service health
+#
+# Usage in a role:
+#   - name: Verify HDFS NameNode is healthy
+#     include_tasks: ../common/tasks/service_health_check.yml
+#     vars:
+#       service_name: "HDFS NameNode"
+#       process_pattern: "org.apache.hadoop.hdfs.server.namenode.NameNode"
+#       health_check_cmd: "{{ hadoop_home }}/bin/hdfs dfsadmin -safemode wait"
+#
+# Output:
+#   service_is_healthy: true/false (available after task completes)
+
+- name: "Check if {{ service_name }} process is running"
+  shell: "pgrep -f '{{ process_pattern }}'"
+  register: service_proc_check
+  changed_when: false
+  failed_when: false
+
+- name: "Wait for {{ service_name }} to become healthy"
+  shell: "{{ health_check_cmd }}"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+  register: service_health_check
+  retries: "{{ health_check_retries | default(5) }}"
+  delay: "{{ health_check_delay | default(10) }}"
+  until: service_health_check.rc == 0
+  when:
+    - health_check_cmd is defined
+    - service_proc_check.rc == 0
+  failed_when: false
+
+- name: "Verify {{ service_name }} is listening on port {{ health_check_port }}"
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: "{{ health_check_port }}"
+    timeout: 60
+  when:
+    - health_check_port is defined
+    - service_proc_check.rc == 0
+  register: service_port_check
+  failed_when: false
+
+- name: "Set service health status fact for {{ service_name }}"
+  set_fact:
+    service_is_healthy: "{{ service_proc_check.rc == 0 and (service_health_check.rc == 0 or service_health_check is skipped or service_port_check.rc == 0) }}"

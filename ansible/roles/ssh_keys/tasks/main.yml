@@ -1,0 +1,64 @@
+---
+# Runs on the NameNode as the hadoop user.
+# Generates an SSH keypair and distributes the public key to all cluster nodes
+# so start-dfs.sh / start-yarn.sh can SSH from NameNode without prompts.
+
+- name: Ensure .ssh directory exists for hadoop user
+  file:
+    path: "/home/{{ hadoop_user }}/.ssh"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0700"
+
+- name: Generate SSH keypair on NameNode
+  openssh_keypair:
+    path: "/home/{{ hadoop_user }}/.ssh/id_rsa"
+    type: rsa
+    size: 4096
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0600"
+  register: namenode_keypair
+
+- name: Read NameNode public key
+  slurp:
+    src: "/home/{{ hadoop_user }}/.ssh/id_rsa.pub"
+  register: namenode_pubkey
+
+- name: Distribute public key to all cluster nodes
+  authorized_key:
+    user: "{{ hadoop_user }}"
+    key: "{{ namenode_pubkey.content | b64decode }}"
+    state: present
+  delegate_to: "{{ item }}"
+  loop: "{{ groups['hadoop_cluster'] | unique }}"
+
+- name: Add localhost entries to NameNode known_hosts
+  known_hosts:
+    name: "{{ item }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -H ' ~ item ~ ' 2>/dev/null') }}"
+    state: present
+    path: "/home/{{ hadoop_user }}/.ssh/known_hosts"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  loop:
+    - localhost
+    - 127.0.0.1
+
+- name: Add all cluster nodes to NameNode known_hosts
+  known_hosts:
+    name: "{{ hostvars[item]['ansible_default_ipv4']['address'] }}"
+    key: "{{ lookup('pipe', 'ssh-keyscan -H ' ~ hostvars[item]['ansible_default_ipv4']['address'] ~ ' 2>/dev/null') }}"
+    state: present
+    path: "/home/{{ hadoop_user }}/.ssh/known_hosts"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  loop: "{{ groups['hadoop_cluster'] | unique }}"
+
+- name: Set known_hosts ownership
+  file:
+    path: "/home/{{ hadoop_user }}/.ssh/known_hosts"
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0644"

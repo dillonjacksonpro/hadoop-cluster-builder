@@ -1,0 +1,77 @@
+---
+- name: Install Java (Amazon Corretto 11)
+  dnf:
+    name: "{{ java_package }}"
+    state: present
+
+- name: Install supporting packages
+  dnf:
+    name:
+      - rsync
+      - python3
+    state: present
+
+- name: Create hadoop group
+  group:
+    name: "{{ hadoop_group }}"
+    state: present
+
+- name: Create hadoop user
+  user:
+    name: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    home: "/home/{{ hadoop_user }}"
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Create HDFS data directory
+  file:
+    path: "{{ hdfs_data_dir }}"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0755"
+
+- name: Create HDFS namenode directory
+  file:
+    path: "{{ hdfs_name_dir }}"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0755"
+
+- name: Create Hadoop install directory
+  file:
+    path: "{{ hadoop_install_dir }}"
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0755"
+
+- name: Set ulimits for hadoop user
+  pam_limits:
+    domain: "{{ hadoop_user }}"
+    limit_type: "{{ item.type }}"
+    limit_item: "{{ item.item }}"
+    value: "{{ item.value }}"
+  loop:
+    - { type: soft, item: nofile, value: "65536" }
+    - { type: hard, item: nofile, value: "65536" }
+    - { type: soft, item: nproc,  value: "32768" }
+    - { type: hard, item: nproc,  value: "32768" }
+
+- name: Check if firewalld is installed
+  shell: "systemctl list-unit-files | grep firewalld"
+  register: firewalld_check
+  changed_when: false
+  failed_when: false
+
+- name: Disable firewalld (security groups handle network ACLs)
+  systemd:
+    name: firewalld
+    state: stopped
+    enabled: false
+  when: firewalld_check.rc == 0
+  register: firewalld_stop
+  failed_when: firewalld_stop.rc != 0 and "Unit firewalld.service not found" not in firewalld_stop.stderr

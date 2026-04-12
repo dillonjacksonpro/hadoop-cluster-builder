@@ -1,0 +1,87 @@
+---
+- name: Create hadoop-tmp directory
+  file:
+    path: /data/hadoop-tmp
+    state: directory
+    owner: "{{ hadoop_user }}"
+    group: "{{ hadoop_group }}"
+    mode: "0755"
+
+- name: Check if NameNode has already been formatted
+  stat:
+    path: "{{ hdfs_name_dir }}/current/VERSION"
+  register: namenode_formatted
+
+- name: Format HDFS NameNode
+  shell: "{{ hadoop_home }}/bin/hdfs namenode -format -force -nonInteractive"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+  when: not namenode_formatted.stat.exists
+  register: format_result
+  failed_when: format_result.rc != 0
+
+- name: Validate HDFS NameNode formatting succeeded
+  stat:
+    path: "{{ hdfs_name_dir }}/current/VERSION"
+  register: format_validation
+  failed_when: not format_validation.stat.exists and not namenode_formatted.stat.exists
+  when: not namenode_formatted.stat.exists
+
+- name: Check if NameNode is already running
+  shell: pgrep -f "org.apache.hadoop.hdfs.server.namenode.NameNode"
+  register: namenode_proc
+  changed_when: false
+  failed_when: false
+
+- name: Start HDFS (DFS daemons)
+  shell: "{{ hadoop_home }}/sbin/start-dfs.sh"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+    PDSH_RCMD_TYPE: ssh
+  when: namenode_proc.rc != 0
+
+- name: Wait for NameNode to exit safe mode
+  shell: "{{ hadoop_home }}/bin/hdfs dfsadmin -safemode wait"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+  register: safemode_result
+  retries: 5
+  delay: 10
+  until: safemode_result.rc == 0
+
+- name: Wait for HDFS NameNode web UI to be available
+  wait_for:
+    host: "{{ ansible_default_ipv4.address }}"
+    port: 9870
+    timeout: 60
+
+- name: Create /user/hadoop directory in HDFS
+  shell: "{{ hadoop_home }}/bin/hdfs dfs -mkdir -p /user/{{ hadoop_user }}"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+  register: mkdir_result
+  failed_when: mkdir_result.rc != 0 and "File exists" not in mkdir_result.stderr
+  changed_when: "'created' in mkdir_result.stdout or 'File exists' not in mkdir_result.stderr"
+
+- name: Set ownership of /user/hadoop directory
+  shell: "{{ hadoop_home }}/bin/hdfs dfs -chown {{ hadoop_user }}:{{ hadoop_group }} /user/{{ hadoop_user }}"
+  become: true
+  become_user: "{{ hadoop_user }}"
+  environment:
+    JAVA_HOME: "{{ java_home }}"
+    HADOOP_HOME: "{{ hadoop_home }}"
+  register: chown_result
+  # Fail only if error code indicates actual failure (not "no change needed")
+  failed_when: chown_result.rc != 0

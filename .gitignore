@@ -1,0 +1,23 @@
+# Terraform
+terraform/.terraform/
+terraform/.terraform.lock.hcl
+terraform/terraform.tfstate
+terraform/terraform.tfstate.backup
+terraform/tfplan
+terraform/hadoop_key.pem
+terraform/terraform.tfvars
+
+# Ansible generated inventory
+ansible/hosts.ini
+
+# SSH keys
+*.pem
+*.key
+
+# OS
+.DS_Store
+*.swp
+*~
+
+# claude
+.claude/
