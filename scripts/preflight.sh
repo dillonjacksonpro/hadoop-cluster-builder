@@ -140,7 +140,7 @@ install_python_tools_user() {
 
   if cmd_missing pip3; then
     return 0
-  fi
+  fi 
 
   if cmd_missing aws || cmd_missing ansible-playbook; then
     local python_version
