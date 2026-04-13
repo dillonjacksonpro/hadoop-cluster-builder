@@ -163,10 +163,10 @@ install_python_tools_user() {
         "typing_extensions<4.0" \
         "importlib_metadata<5" || true
     else
-      print_section "Installing Python tooling (awscli, ansible, boto3, botocore) to user site"
+      print_section "Installing Python tooling (awscli, ansible) to user site"
     fi
 
-    python3 -m pip install --user "${aws_spec}" boto3 botocore
+    python3 -m pip install --user "${aws_spec}"
 
     if cmd_missing ansible-playbook; then
       if ! python3 -m pip install --user "${ansible_spec}"; then
