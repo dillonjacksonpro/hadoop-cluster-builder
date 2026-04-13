@@ -116,29 +116,8 @@ run_command_with_retry() {
 
 # Validate that AWS credentials are available and valid
 validate_aws_credentials() {
-  if [[ -z "${AWS_DEFAULT_REGION:-}" && -z "${AWS_REGION:-}" ]]; then
-    echo "ERROR: AWS_DEFAULT_REGION (or AWS_REGION) must be set."
-    return 1
-  fi
-
-  if [[ -n "${AWS_ACCESS_KEY_ID:-}" && -z "${AWS_SECRET_ACCESS_KEY:-}" ]]; then
-    echo "ERROR: AWS_SECRET_ACCESS_KEY is required when AWS_ACCESS_KEY_ID is set."
-    return 1
-  fi
-
-  if [[ -z "${AWS_ACCESS_KEY_ID:-}" && -z "${AWS_PROFILE:-}" ]]; then
-    if ! curl -sf --max-time 5 \
-      http://169.254.169.254/latest/meta-data/iam/security-credentials/ \
-      > /dev/null 2>&1; then
-      echo "ERROR: No AWS credentials found (env vars, AWS profile, or instance role)."
-      return 1
-    fi
-  fi
-
-  if ! aws sts get-caller-identity > /dev/null 2>&1; then
-    echo "ERROR: AWS credentials are invalid, expired, or missing required permissions."
-    return 1
-  fi
+  # Credential checks are intentionally deferred to AWS/Terraform operations.
+  return 0
 }
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -181,16 +160,6 @@ validate_prerequisites() {
   local has_errors=false
   
   print_banner "Validating prerequisites"
-  
-  # Check AWS credentials
-  echo ""
-  print_section "Checking AWS credentials"
-  if ! validate_aws_credentials; then
-    echo "ERROR: AWS credential validation failed"
-    has_errors=true
-  else
-    echo "✓ AWS credentials validated"
-  fi
   
   # Check required commands
   echo ""

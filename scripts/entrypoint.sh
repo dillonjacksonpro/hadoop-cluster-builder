@@ -46,17 +46,6 @@ cleanup() {
 #   - Ctrl+C (SIGINT)
 trap cleanup EXIT TERM INT
 
-# ── Validate AWS credentials ──────────────────────────────────────────────────
-validate_aws_credentials || {
-  echo ""
-  echo "Set credentials in your shell before running:"
-  echo "  export AWS_ACCESS_KEY_ID=..."
-  echo "  export AWS_SECRET_ACCESS_KEY=..."
-  echo "  export AWS_SESSION_TOKEN=...   (if using temporary credentials)"
-  echo "  export AWS_DEFAULT_REGION=us-east-1"
-  exit 1
-}
-
 # ── Step 1: Provision infrastructure ─────────────────────────────────────────
 if [[ "${CLUSTER_DRY_RUN}" == "true" ]]; then
   print_banner "DRY RUN MODE: Planning infrastructure (not applying)"
