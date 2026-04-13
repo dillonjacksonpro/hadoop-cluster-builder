@@ -155,13 +155,27 @@ install_python_tools_user() {
       aws_spec="${AWSCLI_PIP_SPEC:-awscli<1.32}"
       ansible_spec="${ANSIBLE_PIP_SPEC:-ansible==2.9.27}"
       print_section "Installing Python 3.7-compatible tooling to user site"
-      # Older Python environments often need conservative setuptools/typing-extensions.
-      python3 -m pip install --user "setuptools<68" "typing_extensions<4.8" || true
+      # Older Python environments often require a legacy packaging stack.
+      python3 -m pip install --user \
+        "pip<23.3" \
+        "setuptools<58" \
+        "wheel<0.38" \
+        "typing_extensions<4.0" \
+        "importlib_metadata<5" || true
     else
       print_section "Installing Python tooling (awscli, ansible, boto3, botocore) to user site"
     fi
 
-    python3 -m pip install --user "${aws_spec}" "${ansible_spec}" boto3 botocore
+    python3 -m pip install --user "${aws_spec}" boto3 botocore
+
+    if cmd_missing ansible-playbook; then
+      if ! python3 -m pip install --user "${ansible_spec}"; then
+        if [[ "${python_version}" == "3.6" ]] || [[ "${python_version}" == "3.7" ]]; then
+          print_section "Retrying ansible install with fallback version for older Python"
+          python3 -m pip install --user "ansible==2.8.20" || true
+        fi
+      fi
+    fi
   fi
 }
 
