@@ -44,7 +44,11 @@ cmd_missing() {
 install_root_packages() {
   local pkg_manager="$1"
   local priv_prefix="$2"
-  local -a packages=("${@:3}")
+  local -a packages=()
+
+  if [[ $# -gt 2 ]]; then
+    packages=("${@:3}")
+  fi
 
   if [[ "${pkg_manager}" == "none" ]] || [[ "${priv_prefix}" == "none" ]] || [[ ${#packages[@]} -eq 0 ]]; then
     return 0
@@ -185,8 +189,10 @@ if cmd_missing ssh-keyscan; then
   fi
 fi
 
-install_root_packages "${pkg_manager}" "${priv_prefix}" "${root_packages[@]}" || \
-  echo "WARNING: Package manager install step failed; continuing with user-local fallback."
+if [[ ${#root_packages[@]} -gt 0 ]]; then
+  install_root_packages "${pkg_manager}" "${priv_prefix}" "${root_packages[@]}" || \
+    echo "WARNING: Package manager install step failed; continuing with user-local fallback."
+fi
 
 install_terraform_user || true
 install_jq_user || true
