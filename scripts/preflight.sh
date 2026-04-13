@@ -143,9 +143,25 @@ install_python_tools_user() {
   fi
 
   if cmd_missing aws || cmd_missing ansible-playbook; then
-    print_section "Installing Python tooling (awscli, ansible, boto3, botocore) to user site"
-    python3 -m pip install --user --upgrade pip
-    python3 -m pip install --user awscli ansible boto3 botocore
+    local python_version
+    python_version="$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+
+    local aws_spec
+    local ansible_spec
+    aws_spec="${AWSCLI_PIP_SPEC:-awscli}"
+    ansible_spec="${ANSIBLE_PIP_SPEC:-ansible}"
+
+    if [[ "${python_version}" == "3.6" ]] || [[ "${python_version}" == "3.7" ]]; then
+      aws_spec="${AWSCLI_PIP_SPEC:-awscli<1.32}"
+      ansible_spec="${ANSIBLE_PIP_SPEC:-ansible==2.9.27}"
+      print_section "Installing Python 3.7-compatible tooling to user site"
+      # Older Python environments often need conservative setuptools/typing-extensions.
+      python3 -m pip install --user "setuptools<68" "typing_extensions<4.8" || true
+    else
+      print_section "Installing Python tooling (awscli, ansible, boto3, botocore) to user site"
+    fi
+
+    python3 -m pip install --user "${aws_spec}" "${ansible_spec}" boto3 botocore
   fi
 }
 
