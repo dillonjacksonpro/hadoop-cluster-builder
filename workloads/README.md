@@ -15,13 +15,15 @@ my-workload/
 
 ## Running a Workload
 
-From inside the container:
+From the project root:
 
 ```bash
-/workspace/scripts/run-workload.sh https://github.com/org/my-workload.git
+./scripts/run-workload.sh https://github.com/org/my-workload.git
 # or specify a branch:
-/workspace/scripts/run-workload.sh https://github.com/org/my-workload.git dev
+./scripts/run-workload.sh https://github.com/org/my-workload.git dev
 ```
+
+If branch is omitted, the default branch is `main`.
 
 ## Example workload.sh
 

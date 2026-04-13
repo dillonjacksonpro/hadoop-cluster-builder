@@ -32,9 +32,9 @@ cleanup() {
   echo ""
   # Only destroy if not in dry-run mode
   if [[ "${CLUSTER_DRY_RUN:-false}" == "true" ]]; then
-    print_banner "Container exiting — dry-run mode (no resources to destroy)"
+    print_banner "Exiting — dry-run mode (no resources to destroy)"
   else
-    print_banner "Container exiting — destroying AWS infrastructure"
+    print_banner "Exiting — destroying AWS infrastructure"
     bash "${SCRIPTS_DIR}/destroy.sh" || true
   fi
   exit "${exit_code}"
@@ -42,18 +42,18 @@ cleanup() {
 
 # Trap EXIT, TERM, and INT so cleanup fires under all conditions:
 #   - Normal shell exit (user types 'exit' or Ctrl+D)
-#   - Docker stop (SIGTERM)
+#   - Process termination (SIGTERM)
 #   - Ctrl+C (SIGINT)
 trap cleanup EXIT TERM INT
 
 # ── Validate AWS credentials ──────────────────────────────────────────────────
 validate_aws_credentials || {
   echo ""
-  echo "Pass credentials to docker run via:"
-  echo "  -e AWS_ACCESS_KEY_ID=..."
-  echo "  -e AWS_SECRET_ACCESS_KEY=..."
-  echo "  -e AWS_SESSION_TOKEN=...   (if using temporary credentials)"
-  echo "  -e AWS_DEFAULT_REGION=us-east-1"
+  echo "Set credentials in your shell before running:"
+  echo "  export AWS_ACCESS_KEY_ID=..."
+  echo "  export AWS_SECRET_ACCESS_KEY=..."
+  echo "  export AWS_SESSION_TOKEN=...   (if using temporary credentials)"
+  echo "  export AWS_DEFAULT_REGION=us-east-1"
   exit 1
 }
 
@@ -78,9 +78,18 @@ bash "${SCRIPTS_DIR}/configure.sh"
 
 # ── Step 4: Print access information ─────────────────────────────────────────
 cd "${TERRAFORM_DIR}"
-NAMENODE_IP=$(terraform output -raw namenode_public_ip)
-KEY_PATH=$(terraform output -raw private_key_path)
-CLUSTER_SIZE=$(terraform output -raw cluster_size)
+NAMENODE_IP=$(terraform output -raw namenode_public_ip) || {
+  echo "ERROR: Failed to read namenode_public_ip from Terraform outputs."
+  exit 1
+}
+KEY_PATH=$(terraform output -raw private_key_path) || {
+  echo "ERROR: Failed to read private_key_path from Terraform outputs."
+  exit 1
+}
+CLUSTER_SIZE=$(terraform output -raw cluster_size) || {
+  echo "ERROR: Failed to read cluster_size from Terraform outputs."
+  exit 1
+}
 
 echo ""
 print_banner "Hadoop Cluster Ready  (${CLUSTER_SIZE} node(s))"
@@ -93,7 +102,7 @@ echo "    HDFS NameNode:          http://${NAMENODE_IP}:9870"
 echo "    YARN ResourceManager:   http://${NAMENODE_IP}:8088"
 echo ""
 echo "  Run a workload:"
-echo "    /workspace/scripts/run-workload.sh <git-url> [branch]"
+echo "    ${SCRIPTS_DIR}/run-workload.sh <git-url> [branch]"
 echo ""
 echo "  Verify cluster health:"
 echo "    ssh -i ${KEY_PATH} ec2-user@${NAMENODE_IP} 'sudo -u hadoop hdfs dfsadmin -report'"

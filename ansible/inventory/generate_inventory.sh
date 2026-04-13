@@ -7,7 +7,7 @@ set -euo pipefail
 script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 source "${script_dir}/scripts/lib.sh"
 
-TERRAFORM_DIR="${TERRAFORM_DIR:-/workspace/terraform}"
+TERRAFORM_DIR="${TERRAFORM_DIR:-${PROJECT_ROOT}/terraform}"
 INVENTORY_FILE="${ANSIBLE_DIR}/hosts.ini"
 
 cd "${TERRAFORM_DIR}"
@@ -48,7 +48,7 @@ ensure_known_host "${NAMENODE_IP}"
   echo "hdfs_replication_factor=${HDFS_REPLICATION_FACTOR}"
 } > "${INVENTORY_FILE}"
 
-sort -u /root/.ssh/known_hosts -o /root/.ssh/known_hosts
+sort -u "${KNOWN_HOSTS_FILE}" -o "${KNOWN_HOSTS_FILE}"
 
 echo "Inventory written to ${INVENTORY_FILE}"
 cat "${INVENTORY_FILE}"

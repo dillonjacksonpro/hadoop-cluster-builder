@@ -11,17 +11,31 @@ WORKLOAD_URL="${1:?Usage: run-workload.sh <git-url> [branch]}"
 BRANCH="${2:-main}"
 WORKLOAD_DIR="/tmp/workload-$(date +%s)"
 
+check_required_commands "terraform" "git" "scp" "ssh"
+
 cd "${TERRAFORM_DIR}"
 
-NAMENODE_IP=$(terraform output -raw namenode_public_ip)
-KEY_PATH=$(terraform output -raw private_key_path)
+NAMENODE_IP=$(terraform output -raw namenode_public_ip) || {
+  echo "ERROR: Failed to read namenode_public_ip from Terraform outputs."
+  exit 1
+}
+KEY_PATH=$(terraform output -raw private_key_path) || {
+  echo "ERROR: Failed to read private_key_path from Terraform outputs."
+  exit 1
+}
 
-mkdir -p /root/.ssh
-touch /root/.ssh/known_hosts
-chmod 600 /root/.ssh/known_hosts
+if [[ ! -f "${KEY_PATH}" ]]; then
+  echo "ERROR: SSH key file not found at ${KEY_PATH}"
+  exit 1
+fi
+
+mkdir -p "${SSH_DIR}"
+touch "${KNOWN_HOSTS_FILE}"
+chmod 700 "${SSH_DIR}" 2>/dev/null || true
+chmod 600 "${KNOWN_HOSTS_FILE}"
 ensure_known_host "${NAMENODE_IP}"
 
-SSH_OPTS="-i ${KEY_PATH}"
+SSH_OPTS=(-i "${KEY_PATH}")
 
 print_section "Cloning workload from ${WORKLOAD_URL} (branch: ${BRANCH})"
 git clone --branch "${BRANCH}" --depth 1 "${WORKLOAD_URL}" "${WORKLOAD_DIR}"
@@ -45,12 +59,11 @@ if [[ ! -x "${WORKLOAD_DIR}/workload.sh" ]]; then
 fi
 
 print_section "Copying workload to NameNode (${NAMENODE_IP})"
-scp ${SSH_OPTS} -r "${WORKLOAD_DIR}" "ec2-user@${NAMENODE_IP}:/home/ec2-user/workload"
+scp "${SSH_OPTS[@]}" -r "${WORKLOAD_DIR}" "ec2-user@${NAMENODE_IP}:~/workload"
 
 print_section "Submitting workload"
-# shellcheck disable=SC2086
-ssh ${SSH_OPTS} "ec2-user@${NAMENODE_IP}" \
-  "cd /home/ec2-user/workload && bash workload.sh"
+ssh "${SSH_OPTS[@]}" "ec2-user@${NAMENODE_IP}" \
+  "cd ~/workload && bash workload.sh"
 
 echo ""
 print_banner "Workload completed successfully"

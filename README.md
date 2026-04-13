@@ -1,11 +1,17 @@
 # Hadoop Cluster Builder
 
-Provisions a Hadoop cluster on AWS using Terraform and Ansible, all from inside an Amazon Linux 2023 Docker container. When you exit the container, all AWS resources are automatically destroyed.
+Provisions a Hadoop cluster on AWS using Terraform and Ansible directly from your shell.
 
 ## Prerequisites
 
-- Docker installed on your machine
+- Bash
+- curl and unzip (needed for user-local fallback installs)
 - AWS credentials (access key, secret key, session token if using a lab account)
+
+On startup, `run.sh` executes `scripts/preflight.sh` and installs missing dependencies that were previously provided by Docker (Terraform, Ansible, AWS CLI, jq, and support tools).
+
+- If root/sudo is available: installs via `apt`, `dnf`, or `yum`
+- If root/sudo is not available: installs supported tools to `~/.local/bin`
 
 ## Quick Start
 
@@ -14,17 +20,20 @@ Provisions a Hadoop cluster on AWS using Terraform and Ansible, all from inside 
 git clone <this-repo> hadoop-cluster-builder
 cd hadoop-cluster-builder
 
-# Set your AWS credentials
+# Set your AWS credentials (or use ~/.aws/credentials or an instance role)
 export AWS_ACCESS_KEY_ID=...
 export AWS_SECRET_ACCESS_KEY=...
 export AWS_SESSION_TOKEN=...       # if using temporary/lab credentials
 export AWS_DEFAULT_REGION=us-east-1
 
-# Build and run (default: 3-node cluster)
+# Run (default: 3-node cluster)
 bash run.sh
+
+# Optional: skip auto-install/bootstrap preflight
+SKIP_PREFLIGHT=true bash run.sh
 ```
 
-That's it. The container will:
+That command will:
 1. Provision a VPC, security groups, and EC2 instances via Terraform
 2. Configure Hadoop (HDFS + YARN) across all nodes via Ansible
 3. Drop you into an interactive shell with the cluster ready to use
@@ -47,6 +56,14 @@ CLUSTER_SIZE=1 bash run.sh    # minimal single-node cluster
 CLUSTER_SIZE=5 bash run.sh    # 1 NameNode + 4 DataNodes
 ```
 
+## Dry Run
+
+To preview Terraform changes without applying:
+
+```bash
+bash run.sh --dry-run
+```
+
 ## Instance Types
 
 | Role | Default type | RAM |
@@ -55,6 +72,13 @@ CLUSTER_SIZE=5 bash run.sh    # 1 NameNode + 4 DataNodes
 | DataNode | `t3.medium` | 4 GB |
 
 Override via `terraform.tfvars` (see `terraform/terraform.tfvars.example`).
+
+`terraform.tfvars` is optional. Defaults are used if the file is absent.
+To customize settings, copy and edit the example:
+
+```bash
+cp terraform/terraform.tfvars.example terraform/terraform.tfvars
+```
 
 ## Security Notes
 
@@ -67,24 +91,24 @@ admin_cidr_blocks = ["203.0.113.10/32"]
 
 - SSH host key checking is enabled for Ansible and workload execution. The tooling pre-populates `known_hosts` automatically during provisioning.
 
-## Inside the Container
+## Once Provisioned
 
-Once provisioned, the container drops you into a shell. You can:
+Once provisioned, the launcher drops you into a shell. You can:
 
 ```bash
 # SSH to the NameNode
-ssh -i /workspace/terraform/hadoop_key.pem ec2-user@<namenode-ip>
+ssh -i ./terraform/hadoop_key.pem ec2-user@<namenode-ip>
 
 # Check HDFS cluster status
-ssh -i /workspace/terraform/hadoop_key.pem ec2-user@<namenode-ip> \
+ssh -i ./terraform/hadoop_key.pem ec2-user@<namenode-ip> \
     'sudo -u hadoop hdfs dfsadmin -report'
 
 # Check YARN nodes
-ssh -i /workspace/terraform/hadoop_key.pem ec2-user@<namenode-ip> \
+ssh -i ./terraform/hadoop_key.pem ec2-user@<namenode-ip> \
     'sudo -u hadoop yarn node -list'
 
 # Run a workload from a git repo
-/workspace/scripts/run-workload.sh https://github.com/org/my-workload.git
+./scripts/run-workload.sh https://github.com/org/my-workload.git
 ```
 
 Web UIs (open in your browser — IPs printed at startup):
@@ -104,13 +128,13 @@ Terraform destroy runs automatically. All EC2 instances, the VPC, security group
 If cleanup fails (e.g., credentials expired), run manually:
 
 ```bash
-cd /workspace/terraform && terraform destroy
+cd ./terraform && terraform destroy
 ```
 
 ## Architecture
 
 ```
-Container (amazonlinux:2023)
+Local shell
 ├── Terraform — provisions AWS infrastructure
 │   ├── VPC + public subnet
 │   ├── EC2: 1 NameNode (t3.large)

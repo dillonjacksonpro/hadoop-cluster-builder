@@ -13,6 +13,8 @@ PROJECT_ROOT="$(dirname "$SCRIPTS_DIR")"
 ANSIBLE_DIR="$PROJECT_ROOT/ansible"
 TERRAFORM_DIR="$PROJECT_ROOT/terraform"
 INVENTORY_SCRIPT="$ANSIBLE_DIR/inventory/generate_inventory.sh"
+SSH_DIR="${HOME}/.ssh"
+KNOWN_HOSTS_FILE="${SSH_DIR}/known_hosts"
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Banner and Logging Functions
@@ -44,9 +46,10 @@ print_section() {
 ensure_known_host() {
   local ip="$1"
   
-  mkdir -p /root/.ssh
-  touch /root/.ssh/known_hosts
-  chmod 600 /root/.ssh/known_hosts
+  mkdir -p "${SSH_DIR}"
+  touch "${KNOWN_HOSTS_FILE}"
+  chmod 700 "${SSH_DIR}" 2>/dev/null || true
+  chmod 600 "${KNOWN_HOSTS_FILE}"
   
   # Check if already present
   if ssh-keygen -F "${ip}" > /dev/null 2>&1; then
@@ -54,10 +57,10 @@ ensure_known_host() {
   fi
   
   # Add with ssh-keyscan, suppress errors (key scanning may fail on restricted networks)
-  ssh-keyscan -H "${ip}" >> /root/.ssh/known_hosts 2>/dev/null || true
+  ssh-keyscan -H "${ip}" >> "${KNOWN_HOSTS_FILE}" 2>/dev/null || true
   
   # Dedup and sort the known_hosts file
-  sort -u /root/.ssh/known_hosts -o /root/.ssh/known_hosts
+  sort -u "${KNOWN_HOSTS_FILE}" -o "${KNOWN_HOSTS_FILE}"
 }
 
 # Ensure multiple IPs are in ~/.ssh/known_hosts
@@ -192,7 +195,7 @@ validate_prerequisites() {
   # Check required commands
   echo ""
   print_section "Checking required commands"
-  if ! check_required_commands "terraform" "ansible" "aws" "jq" "ssh-keyscan"; then
+  if ! check_required_commands "terraform" "ansible-playbook" "aws" "jq" "ssh-keyscan"; then
     has_errors=true
   else
     echo "✓ All required commands available"

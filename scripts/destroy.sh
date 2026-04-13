@@ -3,17 +3,28 @@
 # Best-effort: do not use set -e — we want to report errors without crashing.
 
 # Source shared utilities (without aborting on error)
-script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || script_dir="/workspace/scripts"
-source "${script_dir}/lib.sh" 2>/dev/null || true
+script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" 2>/dev/null && pwd)" || script_dir="$(pwd)/scripts"
+if ! source "${script_dir}/lib.sh" 2>/dev/null; then
+  print_banner() {
+    echo "============================================================"
+    echo "  $1"
+    echo "============================================================"
+  }
+  print_section() {
+    echo ""
+    echo "=== $1 ==="
+  }
+fi
 
-TERRAFORM_DIR="${TERRAFORM_DIR:-/workspace/terraform}"
+PROJECT_ROOT="$(cd "${script_dir}/.." 2>/dev/null && pwd)"
+TERRAFORM_DIR="${TERRAFORM_DIR:-${PROJECT_ROOT}/terraform}"
 
 cd "${TERRAFORM_DIR}" 2>/dev/null || {
   echo "WARNING: Could not cd to ${TERRAFORM_DIR}"
   exit 0
 }
 
-if [[ ! -f terraform.tfstate ]] && [[ ! -f .terraform/terraform.tfstate ]]; then
+if [[ ! -f terraform.tfstate ]]; then
   echo "=== No Terraform state found — nothing to destroy ==="
   exit 0
 fi
@@ -50,7 +61,7 @@ if [[ ${ATTEMPT} -gt ${TERRAFORM_DESTROY_RETRIES} ]]; then
   echo ""
   echo "WARNING: terraform destroy failed after ${TERRAFORM_DESTROY_RETRIES} attempts."
   echo "Check the AWS console for any orphaned resources tagged with Cluster=${CLUSTER_NAME}"
-  echo "You can re-run: cd /workspace/terraform && terraform destroy"
+  echo "You can re-run: cd ${TERRAFORM_DIR} && terraform destroy"
 fi
 
 echo ""
